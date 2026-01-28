@@ -15,7 +15,7 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 AIMA_LOGO_PATH = resource_path("aima_logo.png")
-AIMA_LOGO_PATH = "C:/Users/perso/Desktop/aima_logo.png"
+
 
 # --- DONNÉES DE PRIX ---
 data_prices = {
@@ -284,3 +284,4 @@ if final_items_to_print:
 
         pdf_bytes = pdf.output(dest='S').encode('latin-1')
         st.download_button("📥 Télécharger le Devis", data=pdf_bytes, file_name=f"Devis_{devis_num}.pdf")
+
