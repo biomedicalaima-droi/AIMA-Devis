@@ -2,11 +2,21 @@ import streamlit as st
 from fpdf import FPDF
 from datetime import date
 import os
+import sys
 import tempfile
 from PIL import Image
 
-# --- CONFIGURATION ET LOGO ---
-AIMA_LOGO_PATH = "C:/Users/perso/Desktop/aima_logo.png"
+# --- CONFIGURATION ET LOGO (CORRIGÉE POUR EXE) ---
+def resource_path(relative_path):
+    """ Obtenir le chemin absolu vers la ressource, fonctionne pour le dev et pour PyInstaller """
+    try:
+        # PyInstaller crée un dossier temporaire et stocke le chemin dans _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+AIMA_LOGO_PATH = resource_path("aima_logo.png")
 
 # --- DONNÉES DE PRIX (Catalogue) ---
 data_prices = {
@@ -95,32 +105,23 @@ class AIMA_PDF(FPDF):
         self.cell(0, 4, footer_text.encode('latin-1', 'replace').decode('latin-1'), 0, 0, 'C')
 
     def draw_table_header(self):
-        # NOUVELLE RÉPARTITION (Total 190mm) :
-        # Designation: 55 | Participation tests: 30 | Qté: 12 | Part. Totale: 23 | Photo: 70
-        self.set_font("Arial", 'B', 7.5) # Police légèrement plus petite pour les titres
+        self.set_font("Arial", 'B', 7.5)
         self.set_fill_color(24, 73, 115)
         self.set_text_color(255, 255, 255)
         self.set_draw_color(255, 255, 255)
         
-        curr_x = self.get_x()
         curr_y = self.get_y()
-
-        # Designation
         self.cell(55, 10, "Designation", 1, 0, 'C', True)
         
-        # Participation tests/structure (sur 2 lignes si besoin dans la cellule)
         x_pt = self.get_x()
         self.multi_cell(30, 5, "Participation\ntests/structure", 1, 'C', True)
         
-        # Qté
         self.set_xy(x_pt + 30, curr_y)
         self.cell(12, 10, "Qté", 1, 0, 'C', True)
         
-        # Participation Totale
         x_ptot = self.get_x()
         self.multi_cell(23, 5, "Participation\nTotale", 1, 'C', True)
         
-        # Photo (Espace fortement agrandi)
         self.set_xy(x_ptot + 23, curr_y)
         self.cell(70, 10, "Photo", 1, 1, 'C', True)
         
@@ -207,27 +208,20 @@ if final_items_to_print:
         pdf.draw_table_header()
         
         for row in final_items_to_print:
-            h = 45 if row['Image'] else 12 # Hauteur augmentée pour de plus grandes images
+            h = 45 if row['Image'] else 12 
             if pdf.get_y() + h > 260:
                 pdf.add_page(); pdf.draw_table_header()
             
             x_start, y_start = pdf.get_x(), pdf.get_y()
             pdf.set_font("Arial", '', 9)
             
-            # Designation (55mm)
             pdf.multi_cell(55, h, row['Désignation'].encode('latin-1', 'replace').decode('latin-1'), border=1, align='L')
             
-            # Participation tests (30mm)
             pdf.set_xy(x_start + 55, y_start)
             pdf.cell(30, h, f"{row['P.U.']} {euro}", 1, 0, 'C')
-            
-            # Qté (12mm)
             pdf.cell(12, h, str(row['Qté']), 1, 0, 'C')
-            
-            # Part. Totale (23mm)
             pdf.cell(23, h, f"{row['Total']} {euro}", 1, 0, 'C')
             
-            # --- CELLULE PHOTO (70mm) ---
             img_x_box = pdf.get_x()
             pdf.cell(70, h, "", 1, 0)
             
@@ -235,7 +229,7 @@ if final_items_to_print:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
                     tmp.write(row['Image'].getvalue()); tmp_path = tmp.name
                 with Image.open(tmp_path) as img_file: iw, ih = img_file.size
-                aspect = iw / ih; mw, mh = 66, h - 4 # mw agrandi à 66mm
+                aspect = iw / ih; mw, mh = 66, h - 4
                 if aspect > (mw / mh): pw, ph = mw, mw / aspect
                 else: ph, pw = mh, mh * aspect
                 pdf.image(tmp_path, img_x_box + (70 - pw)/2, y_start + (h - ph)/2, w=pw, h=ph)
@@ -247,7 +241,6 @@ if final_items_to_print:
 
             pdf.set_xy(x_start, y_start + h)
 
-        # TOTAL GLOBAL
         pdf.ln(5)
         pdf.set_x(120); pdf.set_font("Arial", 'B', 11)
         pdf.set_fill_color(24, 73, 115); pdf.set_text_color(255, 255, 255)
