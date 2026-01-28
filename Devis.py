@@ -17,7 +17,7 @@ def resource_path(relative_path):
 AIMA_LOGO_PATH = resource_path("aima_logo.png")
 AIMA_LOGO_PATH = "C:/Users/perso/Desktop/aima_logo.png"
 
-# --- DONNÉES DE PRIX (Catalogue) ---
+# --- DONNÉES DE PRIX ---
 data_prices = {
     "Abaisse-langue": [0, 1.5], "Anuscope": [0, 5], "Appareil de photothérapie": [45, 400],
     "Aspirateur à mucosités": [30, 150], "Aspirateur chirurgical": [30, 200], "Bain thermostaté": [30, 50],
@@ -106,17 +106,34 @@ class AIMA_PDF(FPDF):
         self.set_font("Arial", 'B', 7.5)
         self.set_fill_color(24, 73, 115)
         self.set_text_color(255, 255, 255)
-        self.set_draw_color(255, 255, 255)
+        # On met le contour en bleu pour éviter les lignes blanches entre les cellules
+        self.set_draw_color(24, 73, 115)
+        
+        start_x = 10
         curr_y = self.get_y()
+        
+        # On utilise une hauteur fixe de 10 pour tout le header
+        self.set_xy(start_x, curr_y)
         self.cell(55, 10, "Designation", 1, 0, 'C', True)
+        
+        # Pour les colonnes à deux lignes, on ajuste le Y à l'intérieur de la cellule de 10
         x_pt = self.get_x()
-        self.multi_cell(30, 5, "Participation\ntests/structure", 1, 'C', True)
+        self.rect(x_pt, curr_y, 30, 10, 'F') # Fond bleu d'abord
+        self.set_xy(x_pt, curr_y + 1)
+        self.multi_cell(30, 4, "Participation\ntests/structure", 0, 'C')
+        
         self.set_xy(x_pt + 30, curr_y)
         self.cell(12, 10, "Qté", 1, 0, 'C', True)
+        
         x_ptot = self.get_x()
-        self.multi_cell(23, 5, "Participation\nTotale", 1, 'C', True)
+        self.rect(x_ptot, curr_y, 23, 10, 'F') # Fond bleu
+        self.set_xy(x_ptot, curr_y + 1)
+        self.multi_cell(23, 4, "Participation\nTotale", 0, 'C')
+        
         self.set_xy(x_ptot + 23, curr_y)
         self.cell(70, 10, "Photo", 1, 1, 'C', True)
+        
+        # Reset couleurs pour le contenu
         self.set_text_color(0, 0, 0)
         self.set_draw_color(200, 200, 200)
 
@@ -200,42 +217,35 @@ if final_items_to_print:
         pdf.draw_table_header()
         
         for row in final_items_to_print:
-            # --- ÉTAPE 1: CALCULER LA HAUTEUR NÉCESSAIRE ---
-            # On teste la hauteur du texte pour la cellule "Designation" (largeur 55)
-            # On définit une hauteur de ligne de base de 5mm pour le multi_cell
-            temp_font_size = 9
-            pdf.set_font("Arial", '', temp_font_size)
-            
-            # Calcul manuel simple du nombre de lignes basées sur la longueur du texte
-            # (Largeur dispo 55mm, environ 35-40 caractères par ligne en Arial 9)
             text_raw = row['Désignation'].encode('latin-1', 'replace').decode('latin-1')
-            char_per_line = 35 
-            estimated_lines = max(1, (len(text_raw) // char_per_line) + 1)
             
-            # Hauteur minimale pour que le texte respire
-            h_text = estimated_lines * 6 
-            
-            # Si on a une image, on impose 45mm, sinon on prend le plus grand entre 12mm et le texte
+            # Calcul précis du nombre de lignes pour la désignation
+            pdf.set_font("Arial", '', 9)
+            char_limit = 35 
+            lines_count = (len(text_raw) // char_limit) + 1
+            h_text = lines_count * 6
+
+            # Hauteur de ligne dynamique : 45 si photo, sinon minimum 12 ou hauteur du texte
             h = 45 if row['Image'] else max(12, h_text)
 
-            # Gestion du saut de page
             if pdf.get_y() + h > 260:
                 pdf.add_page()
                 pdf.draw_table_header()
             
             x_start, y_start = pdf.get_x(), pdf.get_y()
             
-            # --- ÉTAPE 2: DESSINER LES CELLULES AVEC LA MÊME HAUTEUR 'h' ---
-            # Colonne Designation
-            pdf.multi_cell(55, h/estimated_lines if estimated_lines > 1 else h, text_raw, border=1, align='L')
+            # Cellule Designation avec hauteur forcée à 'h'
+            pdf.rect(x_start, y_start, 55, h)
+            pdf.set_xy(x_start, y_start + (h/2 - (lines_count*3)/2 if not row['Image'] else 2))
+            pdf.multi_cell(55, 4, text_raw, 0, 'L')
             
-            # Revenir à côté pour les colonnes suivantes en utilisant la hauteur 'h' calculée
+            # On revient à la position pour les autres colonnes
             pdf.set_xy(x_start + 55, y_start)
             pdf.cell(30, h, f"{row['P.U.']} {euro}", 1, 0, 'C')
             pdf.cell(12, h, str(row['Qté']), 1, 0, 'C')
             pdf.cell(23, h, f"{row['Total']} {euro}", 1, 0, 'C')
             
-            # Colonne Photo
+            # Colonne Photo avec cadre propre
             img_x_box = pdf.get_x()
             pdf.cell(70, h, "", 1, 0)
             
@@ -260,7 +270,6 @@ if final_items_to_print:
                 pdf.cell(70, h, "Non fournie", 0, 0, 'C')
                 pdf.set_text_color(0, 0, 0)
 
-            # On déplace le curseur à la ligne suivante (Y de départ + hauteur du bloc)
             pdf.set_xy(10, y_start + h)
 
         # Total Final
