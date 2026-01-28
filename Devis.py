@@ -6,17 +6,16 @@ import sys
 import tempfile
 from PIL import Image
 
-# --- CONFIGURATION ET LOGO (CORRIGÉE POUR EXE) ---
+# --- CONFIGURATION ET LOGO ---
 def resource_path(relative_path):
-    """ Obtenir le chemin absolu vers la ressource, fonctionne pour le dev et pour PyInstaller """
     try:
-        # PyInstaller crée un dossier temporaire et stocke le chemin dans _MEIPASS
         base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
 AIMA_LOGO_PATH = resource_path("aima_logo.png")
+AIMA_LOGO_PATH = "C:/Users/perso/Desktop/aima_logo.png"
 
 # --- DONNÉES DE PRIX (Catalogue) ---
 data_prices = {
@@ -72,7 +71,6 @@ class AIMA_PDF(FPDF):
     def header(self):
         if os.path.exists(AIMA_LOGO_PATH):
             self.image(AIMA_LOGO_PATH, 10, 3, 35)
-        
         self.set_font('Arial', 'B', 14) 
         self.set_text_color(24, 73, 115)
         self.set_xy(95, 5) 
@@ -109,22 +107,16 @@ class AIMA_PDF(FPDF):
         self.set_fill_color(24, 73, 115)
         self.set_text_color(255, 255, 255)
         self.set_draw_color(255, 255, 255)
-        
         curr_y = self.get_y()
         self.cell(55, 10, "Designation", 1, 0, 'C', True)
-        
         x_pt = self.get_x()
         self.multi_cell(30, 5, "Participation\ntests/structure", 1, 'C', True)
-        
         self.set_xy(x_pt + 30, curr_y)
         self.cell(12, 10, "Qté", 1, 0, 'C', True)
-        
         x_ptot = self.get_x()
         self.multi_cell(23, 5, "Participation\nTotale", 1, 'C', True)
-        
         self.set_xy(x_ptot + 23, curr_y)
         self.cell(70, 10, "Photo", 1, 1, 'C', True)
-        
         self.set_text_color(0, 0, 0)
         self.set_draw_color(200, 200, 200)
 
@@ -208,44 +200,78 @@ if final_items_to_print:
         pdf.draw_table_header()
         
         for row in final_items_to_print:
-            h = 45 if row['Image'] else 12 
+            # --- ÉTAPE 1: CALCULER LA HAUTEUR NÉCESSAIRE ---
+            # On teste la hauteur du texte pour la cellule "Designation" (largeur 55)
+            # On définit une hauteur de ligne de base de 5mm pour le multi_cell
+            temp_font_size = 9
+            pdf.set_font("Arial", '', temp_font_size)
+            
+            # Calcul manuel simple du nombre de lignes basées sur la longueur du texte
+            # (Largeur dispo 55mm, environ 35-40 caractères par ligne en Arial 9)
+            text_raw = row['Désignation'].encode('latin-1', 'replace').decode('latin-1')
+            char_per_line = 35 
+            estimated_lines = max(1, (len(text_raw) // char_per_line) + 1)
+            
+            # Hauteur minimale pour que le texte respire
+            h_text = estimated_lines * 6 
+            
+            # Si on a une image, on impose 45mm, sinon on prend le plus grand entre 12mm et le texte
+            h = 45 if row['Image'] else max(12, h_text)
+
+            # Gestion du saut de page
             if pdf.get_y() + h > 260:
-                pdf.add_page(); pdf.draw_table_header()
+                pdf.add_page()
+                pdf.draw_table_header()
             
             x_start, y_start = pdf.get_x(), pdf.get_y()
-            pdf.set_font("Arial", '', 9)
             
-            pdf.multi_cell(55, h, row['Désignation'].encode('latin-1', 'replace').decode('latin-1'), border=1, align='L')
+            # --- ÉTAPE 2: DESSINER LES CELLULES AVEC LA MÊME HAUTEUR 'h' ---
+            # Colonne Designation
+            pdf.multi_cell(55, h/estimated_lines if estimated_lines > 1 else h, text_raw, border=1, align='L')
             
+            # Revenir à côté pour les colonnes suivantes en utilisant la hauteur 'h' calculée
             pdf.set_xy(x_start + 55, y_start)
             pdf.cell(30, h, f"{row['P.U.']} {euro}", 1, 0, 'C')
             pdf.cell(12, h, str(row['Qté']), 1, 0, 'C')
             pdf.cell(23, h, f"{row['Total']} {euro}", 1, 0, 'C')
             
+            # Colonne Photo
             img_x_box = pdf.get_x()
             pdf.cell(70, h, "", 1, 0)
             
             if row['Image']:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
-                    tmp.write(row['Image'].getvalue()); tmp_path = tmp.name
-                with Image.open(tmp_path) as img_file: iw, ih = img_file.size
-                aspect = iw / ih; mw, mh = 66, h - 4
-                if aspect > (mw / mh): pw, ph = mw, mw / aspect
-                else: ph, pw = mh, mh * aspect
+                    tmp.write(row['Image'].getvalue())
+                    tmp_path = tmp.name
+                with Image.open(tmp_path) as img_file:
+                    iw, ih = img_file.size
+                aspect = iw / ih
+                mw, mh = 66, h - 4
+                if aspect > (mw / mh):
+                    pw, ph = mw, mw / aspect
+                else:
+                    ph, pw = mh, mh * aspect
                 pdf.image(tmp_path, img_x_box + (70 - pw)/2, y_start + (h - ph)/2, w=pw, h=ph)
                 os.unlink(tmp_path)
             else:
-                pdf.set_xy(img_x_box, y_start); pdf.set_font("Arial", 'I', 8)
-                pdf.set_text_color(150, 150, 150); pdf.cell(70, h, "Non fournie", 0, 0, 'C')
+                pdf.set_xy(img_x_box, y_start)
+                pdf.set_font("Arial", 'I', 8)
+                pdf.set_text_color(150, 150, 150)
+                pdf.cell(70, h, "Non fournie", 0, 0, 'C')
                 pdf.set_text_color(0, 0, 0)
 
-            pdf.set_xy(x_start, y_start + h)
+            # On déplace le curseur à la ligne suivante (Y de départ + hauteur du bloc)
+            pdf.set_xy(10, y_start + h)
 
+        # Total Final
         pdf.ln(5)
-        pdf.set_x(120); pdf.set_font("Arial", 'B', 11)
-        pdf.set_fill_color(24, 73, 115); pdf.set_text_color(255, 255, 255)
+        pdf.set_x(120)
+        pdf.set_font("Arial", 'B', 11)
+        pdf.set_fill_color(24, 73, 115)
+        pdf.set_text_color(255, 255, 255)
         pdf.cell(30, 10, "TOTAL TTC", 1, 0, 'C', True)
-        pdf.set_text_color(0, 0, 0); pdf.cell(40, 10, f"{total_global} {euro}", 1, 1, 'C')
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(40, 10, f"{total_global} {euro}", 1, 1, 'C')
 
         pdf_bytes = pdf.output(dest='S').encode('latin-1')
         st.download_button("📥 Télécharger le Devis", data=pdf_bytes, file_name=f"Devis_{devis_num}.pdf")
