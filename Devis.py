@@ -19,8 +19,6 @@ AIMA_LOGO_PATH = resource_path("aima_logo.png")
 # Configuration de la page Streamlit
 st.set_page_config(layout="wide", page_title="AIMA - Gestion de Devis")
 
-# --- CHEMIN DU LOGO ---
-AIMA_LOGO_PATH = "C:/Users/perso/Desktop/aima_logo.png"
 
 # --- INITIALISATION ---
 if 'manual_items_dict' not in st.session_state:
@@ -266,6 +264,7 @@ if items_to_pdf:
             file_name=f"Devis_{d_num}.pdf",
             mime="application/pdf"
         )
+
 
 
 
