@@ -1,26 +1,16 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 from fpdf import FPDF
 from datetime import date
 import os
-import sys
 import tempfile
-from PIL import Image
-
-# --- CONFIGURATION ET LOGO ---
-def resource_path(relative_path):
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
-
-AIMA_LOGO_PATH = resource_path("aima_logo.png")
+import time
 
 # Configuration de la page Streamlit
 st.set_page_config(layout="wide", page_title="AIMA - Gestion de Devis")
 
 # --- CHEMIN DU LOGO ---
-#AIMA_LOGO_PATH = "C:/Users/perso/Desktop/aima_logo.png"
+AIMA_LOGO_PATH = "C:/Users/perso/Desktop/aima_logo.png"
 
 # --- INITIALISATION ---
 if 'manual_items_dict' not in st.session_state:
@@ -260,8 +250,3 @@ if items_to_pdf:
         pdf.ln(5); pdf.set_x(130); pdf.set_font("Arial", 'B', 10); pdf.set_fill_color(220, 220, 220)
         pdf.cell(30, 8, "TOTAL TTC", 1, 0, 'C', True); pdf.cell(40, 8, f"{total_global:,.2f} EUR", 1, 1, 'C')
         st.download_button("💾 Télécharger le Devis", data=pdf.output(dest='S').encode('latin-1'), file_name=f"Devis_{d_num}.pdf", mime="application/pdf")
-
-
-
-
-
