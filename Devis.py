@@ -21,7 +21,7 @@ AIMA_LOGO_PATH = resource_path("aima_logo.png")
 st.set_page_config(layout="wide", page_title="AIMA - Gestion de Devis")
 
 # --- CHEMIN DU LOGO ---
-AIMA_LOGO_PATH = "C:/Users/perso/Desktop/aima_logo.png"
+#AIMA_LOGO_PATH = "C:/Users/perso/Desktop/aima_logo.png"
 
 # --- INITIALISATION ---
 if 'manual_items_dict' not in st.session_state:
@@ -261,3 +261,4 @@ if items_to_pdf:
         pdf.ln(5); pdf.set_x(130); pdf.set_font("Arial", 'B', 10); pdf.set_fill_color(220, 220, 220)
         pdf.cell(30, 8, "TOTAL TTC", 1, 0, 'C', True); pdf.cell(40, 8, f"{total_global:,.2f} EUR", 1, 1, 'C')
         st.download_button("💾 Télécharger le Devis", data=pdf.output(dest='S').encode('latin-1'), file_name=f"Devis_{d_num}.pdf", mime="application/pdf")
+
