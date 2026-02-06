@@ -19,12 +19,25 @@ AIMA_LOGO_PATH = resource_path("aima_logo.png")
 # Configuration de la page Streamlit
 st.set_page_config(layout="wide", page_title="AIMA - Gestion de Devis")
 
+# --- CHEMIN DU LOGO ---
+#AIMA_LOGO_PATH = "C:/Users/perso/Desktop/aima_logo.png"
 
 # --- INITIALISATION ---
 if 'manual_items_dict' not in st.session_state:
     st.session_state.manual_items_dict = []
 if 'active_catalog' not in st.session_state:
     st.session_state.active_catalog = []
+if 'catalog_selector' not in st.session_state:
+    st.session_state.catalog_selector = []
+
+# --- CALLBACKS ---
+def delete_catalog_item(item_name):
+    if item_name in st.session_state.catalog_selector:
+        st.session_state.catalog_selector.remove(item_name)
+    st.session_state.active_catalog = [x for x in st.session_state.active_catalog if x['name'] != item_name]
+
+def delete_manual_item(index):
+    st.session_state.manual_items_dict.pop(index)
 
 # --- LOGO SIDEBAR ---
 if os.path.exists(AIMA_LOGO_PATH):
@@ -96,41 +109,32 @@ class AIMA_PDF(FPDF):
     def header(self):
         if self.logo_path and os.path.exists(self.logo_path):
             self.image(self.logo_path, 20, 18, 42)
-        self.set_font('Arial', 'B', 14)
-        self.set_text_color(24, 73, 115)
-        self.set_xy(110, 10)
-        self.cell(90, 8, "DEVIS D'EQUIPEMENT MEDICAL", 0, 1, 'R')
-        self.ln(20)
+        self.set_font('Arial', 'B', 14); self.set_text_color(24, 73, 115)
+        self.set_xy(110, 10); self.cell(90, 8, "DEVIS D'EQUIPEMENT MEDICAL", 0, 1, 'R'); self.ln(20)
 
     def draw_first_page_info(self, devis_num, ref_text, selected_date, client_name, client_address):
         y_boxes = 40
         self.set_fill_color(51, 139, 140); self.set_text_color(255, 255, 255)
-        self.set_xy(10, y_boxes); self.set_font('Arial', 'B', 9)
-        self.cell(80, 7, "Association AIMA", 1, 1, 'C', True)
+        self.set_xy(10, y_boxes); self.set_font('Arial', 'B', 9); self.cell(80, 7, "Association AIMA", 1, 1, 'C', True)
         self.set_text_color(0, 0, 0); self.set_font('Arial', '', 8); self.set_x(10)
         info_text = "Le Hangar d'AIMA Humanitaire et Médical\n10 avenue des Salines, 64270 Salies-de-Béarn\nTél : +33 6 09 93 97 25\nMail : international@assoaima.org\nSIRET: 508 544 715 00057"
-        self.multi_cell(80, 4, info_text, 1, 'C')
-        y_left = self.get_y()
+        self.multi_cell(80, 4, info_text, 1, 'C'); y_left = self.get_y()
         self.set_xy(120, y_boxes); self.set_fill_color(51, 139, 140); self.set_text_color(255, 255, 255)
         self.cell(80, 7, f"DESTINATAIRE : {client_name.upper()}", 1, 1, 'C', True)
-        self.set_text_color(0, 0, 0); self.set_font('Arial', '', 9); self.set_x(120)
-        self.multi_cell(80, 5, client_address, 1, 'C')
-        y_right = self.get_y()
-        y_ref = y_left + 2
-        self.set_xy(10, y_ref); self.set_font('Arial', '', 8.5)
+        self.set_text_color(0, 0, 0); self.set_font('Arial', '', 9); self.set_x(120); self.multi_cell(80, 5, client_address, 1, 'C')
+        y_right = self.get_y(); y_ref = y_left + 2; self.set_xy(10, y_ref); self.set_font('Arial', '', 8.5)
         self.multi_cell(55, 4.2, f"Devis N°: {devis_num}\nRéf: {ref_text}\nDate: {selected_date.strftime('%d/%m/%Y')}", 1, 'L')
         return max(self.get_y(), y_right) + 5
 
     def footer(self):
-        self.set_y(-35)
-        self.set_font('Arial', 'I', 7); self.set_text_color(100, 100, 100)
+        self.set_y(-35); self.set_font('Arial', 'I', 7); self.set_text_color(100, 100, 100)
         self.cell(0, 4, "TVA non applicable, Art. 261-7b du code général des impôts", 0, 1, 'C')
         self.cell(0, 4, "IBAN : FR90 2004 1010 0112 2207 4K02 259 BIC : PSSTFRPPBOR", 0, 1, 'C')
         self.cell(0, 4, "Association AIMA - Siège social : 1009 Route des Aügas 64390 - Osserain-Rivareyte | SIRET : 508 544 715 00057", 0, 1, 'C')
         self.cell(0, 4, f'Page {self.page_no()}', 0, 0, 'R')
 
 # --- FONCTION DE LIGNE ---
-def render_item_row(label, default_price, key_suffix):
+def render_item_row(label, default_price, key_suffix, is_manual=False, index=0):
     col_info, col_img = st.columns([1.5, 1])
     with col_info:
         st.write(f"### {label}")
@@ -138,21 +142,24 @@ def render_item_row(label, default_price, key_suffix):
         p_val = float(sum(default_price)) if isinstance(default_price, list) else float(default_price)
         p = c1.number_input(f"P.U. (€)", value=p_val, format="%.2f", key=f"p_{key_suffix}")
         q = c2.number_input(f"Qté", min_value=1, value=1, key=f"q_{key_suffix}")
-        imgs = c3.file_uploader(f"Photos", type=["jpg","png"], accept_multiple_files=True, key=f"img_{key_suffix}")
+        imgs = c3.file_uploader(f"Photos (Copy enabled)", type=["jpg","png"], accept_multiple_files=True, key=f"img_{key_suffix}")
         
-        if st.button("❌ Supprimer", key=f"del_{key_suffix}"):
-            return "DELETE", 0
+        if is_manual:
+            st.button("❌ Supprimer", key=f"del_{key_suffix}", on_click=delete_manual_item, args=(index,))
+        else:
+            st.button("❌ Supprimer", key=f"del_{key_suffix}", on_click=delete_catalog_item, args=(label,))
 
     with col_img:
         if imgs:
+            st.caption("Right-click image to Copy")
             sub_cols = st.columns(3)
             for idx, img in enumerate(imgs[:3]): 
+                # Displaying images so they are "Copyable" via browser context menu
                 sub_cols[idx].image(img, use_container_width=True)
     st.divider()
     return {"Désignation": label, "P.U.": p, "Qté": q, "Total": p*q, "Images": imgs[:3] if imgs else []}, (p * q)
 
 # --- INTERFACE ---
-# En-tête avec Logo et Titre
 col_h1, col_h2 = st.columns([1, 5])
 with col_h1:
     if os.path.exists(AIMA_LOGO_PATH):
@@ -167,32 +174,27 @@ d_num = st.sidebar.text_input("N° Devis", value="2026-001")
 d_ref = st.sidebar.text_input("Référence", value="AIMA-2026-INT")
 d_date = st.sidebar.date_input("Date", value=date.today())
 
-# Choix du logo pour le PDF final
 logo_upload = st.sidebar.file_uploader("Changer le logo du PDF", type=["png", "jpg"])
-final_logo_path = AIMA_LOGO_PATH # Utilise le chemin Desktop par défaut
+final_logo_path = AIMA_LOGO_PATH 
 if logo_upload:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
         tmp.write(logo_upload.getvalue()); final_logo_path = tmp.name
 
-selected_catalog = st.multiselect("📦 Sélectionner les dispositifs :", options=sorted(list(data_prices.keys())))
+# --- GESTION CATALOGUE ---
+selected_catalog = st.multiselect("📦 Sélectionner les dispositifs :", options=sorted(list(data_prices.keys())), key="catalog_selector")
 
 items_to_pdf = []
 total_global = 0.0
 
-# Sync Catalogue
 st.session_state.active_catalog = [x for x in st.session_state.active_catalog if x['name'] in selected_catalog]
 for item in selected_catalog:
     if item not in [x['name'] for x in st.session_state.active_catalog]:
         st.session_state.active_catalog.append({'name': item, 'price': data_prices[item]})
 
-# Affichage Catalogue
 for i, item_data in enumerate(st.session_state.active_catalog):
-    res, price = render_item_row(item_data['name'], item_data['price'], f"cat_{i}")
-    if res == "DELETE":
-        st.session_state.active_catalog.pop(i)
-        st.rerun()
-    else:
-        items_to_pdf.append(res); total_global += price
+    res, price = render_item_row(item_data['name'], item_data['price'], f"cat_{item_data['name']}")
+    items_to_pdf.append(res)
+    total_global += price
 
 # Ajout Manuel
 st.subheader("➕ Article personnalisé")
@@ -201,17 +203,14 @@ n_nom = m_cols[0].text_input("Désignation", key="manual_name")
 n_prix = m_cols[1].number_input("Prix P.U.", min_value=0.0, format="%.2f", key="manual_price")
 if m_cols[2].button("✅ Ajouter"):
     if n_nom: 
-        st.session_state.manual_items_dict.append({"nom": n_nom, "prix": n_prix})
+        unique_id = str(time.time()).replace(".","")
+        st.session_state.manual_items_dict.append({"id": unique_id, "nom": n_nom, "prix": n_prix})
         st.rerun()
 
-# Affichage Manuel
 for i, m in enumerate(st.session_state.manual_items_dict):
-    res, price = render_item_row(m['nom'], m['prix'], f"man_{i}")
-    if res == "DELETE":
-        st.session_state.manual_items_dict.pop(i)
-        st.rerun()
-    elif res:
-        items_to_pdf.append(res); total_global += price
+    res, price = render_item_row(m['nom'], m['prix'], f"man_{m['id']}", is_manual=True, index=i)
+    items_to_pdf.append(res)
+    total_global += price
 
 # --- GÉNÉRATION PDF ---
 if items_to_pdf:
@@ -233,7 +232,6 @@ if items_to_pdf:
             text_w = cols_w[0] - 2
             nb_lines = len(pdf.multi_cell(text_w, 4, row['Désignation'], split_only=True))
             h_row = max(nb_lines * 4 + 4, 32 if row['Images'] else 10)
-
             if pdf.get_y() + h_row > 250: pdf.add_page()
             
             y_c = pdf.get_y()
@@ -247,23 +245,21 @@ if items_to_pdf:
             pdf.cell(cols_w[3], h_row, f"{row['Total']:,.2f}", 1, 0, 'C')
             
             img_x = pdf.get_x(); pdf.cell(cols_w[4], h_row, "", 1, 1)
+            
             if row['Images']:
                 for idx, img in enumerate(row['Images']):
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
-                        tmp.write(img.getvalue()); tmp.close()
-                        pdf.image(tmp.name, img_x + (idx * 25) + 2, y_c + 2, h=h_row-4)
-                        os.unlink(tmp.name)
+                        tmp.write(img.getvalue())
+                        tmp_path = tmp.name
+                    try:
+                        pdf.image(tmp_path, img_x + (idx * 25) + 2, y_c + 2, h=h_row-4)
+                    finally:
+                        if os.path.exists(tmp_path):
+                            os.unlink(tmp_path)
 
-        # Bloc Total
         pdf.ln(5); pdf.set_x(130); pdf.set_font("Arial", 'B', 10); pdf.set_fill_color(220, 220, 220)
         pdf.cell(30, 8, "TOTAL TTC", 1, 0, 'C', True); pdf.cell(40, 8, f"{total_global:,.2f} EUR", 1, 1, 'C')
-        
-        st.download_button(
-            label="💾 Télécharger le Devis", 
-            data=pdf.output(dest='S').encode('latin-1'), 
-            file_name=f"Devis_{d_num}.pdf",
-            mime="application/pdf"
-        )
+        st.download_button("💾 Télécharger le Devis", data=pdf.output(dest='S').encode('latin-1'), file_name=f"Devis_{d_num}.pdf", mime="application/pdf")
 
 
 
