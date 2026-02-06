@@ -6,6 +6,17 @@ import os
 import tempfile
 import time
 
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+AIMA_LOGO_PATH = resource_path("aima_logo.png")
+
+
 # Configuration de la page Streamlit
 st.set_page_config(layout="wide", page_title="AIMA - Gestion de Devis")
 
