@@ -420,8 +420,8 @@ if items_to_pdf and st.button(f"📄 GÉNÉRER {doc_type} PDF"):
 
     if doc_type == "DEVIS":
         pdf.set_xy(120, y_final_start)
-        pdf.set_font("Arial", 'B', 9); pdf.cell(80, 8, "Signature et cachet :", 1, 1, 'L')
-        pdf.set_x(120); pdf.cell(80, 26, "", 1, 1)
+        pdf.set_font("Arial", 'B', 9); pdf.cell(80, 8, "Signature :", 1, 1, 'L')
+        pdf.set_x(120); pdf.cell(80, 20, "", 1, 1)
 
     pdf_data = pdf.output(dest='S')
     st.download_button(f"💾 Télécharger {doc_type}", pdf_data.encode('latin-1') if isinstance(pdf_data, str) else pdf_data, f"{d_num}.pdf", "application/pdf")
