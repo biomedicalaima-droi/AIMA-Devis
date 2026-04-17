@@ -85,10 +85,10 @@ def delete_manual_item(index):
 
 # --- DONNÉES ET CONSTANTES ---
 LOCATIONS = {
-    "CAME": {"address": "409 Chemin de Gensanne, 64520 Came", "email": "lehangardaima.came@gmail.com", "phone": "05 59 31 97 53"},
     "OSSERAIN-RIVAREYTE": {"address": "1009 Route des Aügas, 64390 Osserain-Rivareyte", "email": "osserain@assoaima.org", "phone": "05 59 38 17 86"},
     "SALIES-DE-BÉARN": {"address": "154 Chemin du Haou, 64270 Salies-de-Béarn", "email": "salies@assoaima.org", "phone": "05 59 38 03 30"},
     "CASTETNAU-CAMBLONG": {"address": "11 Rue du Bourg, 64190 Castetnau-Camblong", "email": "lehangardaima.castetnau@gmail.com", "phone": "05 59 66 16 90"}
+    "CAME": {"address": "409 Chemin de Gensanne, 64520 Came", "email": "lehangardaima.came@gmail.com", "phone": "05 59 31 97 53"},
 }
 LIEUX_ARTICLES = ["Osserain-Rivareyte","Came", "Salies-de-Béarn", "Castetnau-Camblong"]
 MODES_PAIEMENT = ["Virement Bancaire", "Chèque","Chorus", "Espèces", "Carte Bancaire"]
