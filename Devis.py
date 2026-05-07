@@ -19,11 +19,8 @@ def resource_path(relative_path):
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
-
 AIMA_LOGO_PATH = resource_path("aima_logo.png")
-if not os.path.exists(AIMA_LOGO_PATH):
-    AIMA_LOGO_PATH = "C:/Users/perso/Desktop/aima_logo.png" 
-
+#AIMA_LOGO_PATH = "C:/Users/perso/Desktop/aima_logo.png"
 
 st.set_page_config(layout="wide", page_title="AIMA - Gestion de Devis & Factures")
 
@@ -34,12 +31,58 @@ if 'active_catalog' not in st.session_state:
     st.session_state.active_catalog = []
 if 'catalog_selector' not in st.session_state:
     st.session_state.catalog_selector = []
+# On sépare les compteurs par type de document pour chaque client
 if 'counters' not in st.session_state:
     st.session_state.counters = {"DEVIS": {}, "FACTURE": {}}
-if "client_name_val" not in st.session_state:
-    st.session_state["client_name_val"] = ""
-if "client_addr_val" not in st.session_state:
-    st.session_state["client_addr_val"] = ""
+
+# --- STYLE CSS ---
+st.markdown("""
+    <style>
+    .block-container { padding-top: 5rem; padding-bottom: 3rem; }
+    h1 { margin-top: -10px !important; padding-bottom: 10px !important; }
+    h3 { margin-top: -10px !important; margin-bottom: 10px !important; }
+    hr { margin-top: 0px !important; margin-bottom: 10px !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- FONCTIONS UTILES ---
+def get_base64_logo(path):
+    if os.path.exists(path):
+        try:
+            with open(path, "rb") as f:
+                data = base64.b64encode(f.read()).decode("utf-8")
+            return f"data:image/png;base64,{data}"
+        except Exception: return None
+    return None
+
+def import_items_from_pdf(uploaded_pdf):
+    try:
+        new_items = []
+        with pdfplumber.open(uploaded_pdf) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if table:
+                    for row in table:
+                        if not row or "Designation" in str(row[0]) or "TOTAL" in str(row[0]): continue
+                        try:
+                            nom = str(row[0]).strip()
+                            prix_str = str(row[1]).replace(' ', '').replace('€', '').replace(',', '.')
+                            prix = float(prix_str)
+                            new_items.append({"id": str(time.time())+nom, "nom": nom, "prix": prix})
+                        except: continue
+        return new_items
+    except Exception as e:
+        st.error(f"Erreur d'importation : {e}")
+        return []
+
+# --- CALLBACKS ---
+def delete_catalog_item(item_name):
+    if item_name in st.session_state.catalog_selector:
+        st.session_state.catalog_selector.remove(item_name)
+    st.session_state.active_catalog = [x for x in st.session_state.active_catalog if x['name'] != item_name]
+
+def delete_manual_item(index):
+    st.session_state.manual_items_dict.pop(index)
 
 # --- DONNÉES ET CONSTANTES ---
 LOCATIONS = {
